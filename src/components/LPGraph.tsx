@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, RotateCcw } from "lucide-react";
 import type { Config } from "plotly.js";
 import type { LPPSolution } from "../types/lpp";
-import { computeGraphBounds } from "../engine/graph";
+import { type Box, computeGraphBounds } from "../engine/graph";
 import { latexConstraint } from "../utils/formatting";
-import { buildFigure, layersForStep, type GraphLayers } from "./graphFigure";
+import { buildFigure, layersForStep, showsInequalityRegion, type GraphLayers } from "./graphFigure";
 import { INK, POINT, REGION, lineColor, lineDash } from "./graphStyle";
 import { loadPlotly } from "./plotlyLoader";
 import { MathExpression } from "./MathExpression";
@@ -20,10 +20,15 @@ function LineSwatch({ color, dash, width }: { color: string; dash: keyof typeof 
   );
 }
 
-function MarkerSwatch({ kind }: { kind: "feasible" | "infeasible" | "optimal" | "region" | "zline" | "neutral" | "intercept" }) {
+function MarkerSwatch({
+  kind,
+}: {
+  kind: "feasible" | "infeasible" | "optimal" | "region" | "segment" | "zline" | "neutral" | "intercept";
+}) {
   return (
     <svg width="26" height="16" aria-hidden="true" className="shrink-0">
       {kind === "region" && <rect x="2" y="2" width="22" height="12" rx="2" fill={REGION.fill} stroke={REGION.edge} />}
+      {kind === "segment" && <line x1="3" y1="8" x2="23" y2="8" stroke={REGION.segment} strokeWidth="6" strokeLinecap="round" />}
       {kind === "feasible" && <circle cx="13" cy="8" r="5.5" fill={POINT.feasible} stroke="#fff" strokeWidth="1.5" />}
       {kind === "neutral" && <circle cx="13" cy="8" r="4.5" fill={POINT.neutral} />}
       {kind === "intercept" && <circle cx="13" cy="8" r="4.5" fill="#fff" stroke={INK.primary} strokeWidth="2" />}
@@ -39,7 +44,8 @@ function MarkerSwatch({ kind }: { kind: "feasible" | "infeasible" | "optimal" | 
   );
 }
 
-function Legend({ solution, layers }: { solution: LPPSolution; layers: GraphLayers }) {
+function Legend({ solution, layers, view }: { solution: LPPSolution; layers: GraphLayers; view: Box }) {
+  const inequalityArea = showsInequalityRegion(solution, view);
   const hasOptimum = layers.optimum && solution.optimalValue !== null && solution.optimalSet !== null;
   return (
     <div className="grid gap-3 border-t border-slate-100 px-4 py-3 text-sm sm:grid-cols-2">
@@ -53,9 +59,20 @@ function Legend({ solution, layers }: { solution: LPPSolution; layers: GraphLaye
         ))}
       </ul>
       <ul className="space-y-1 text-slate-700" aria-label="Symbols">
-        {layers.region && solution.region.shape !== "empty" && (
+        {layers.region && solution.region.shape !== "empty" && inequalityArea && (
+          <>
+            <li className="flex items-center gap-2">
+              <MarkerSwatch kind="region" /> Region satisfying all ≤ / ≥ constraints
+            </li>
+            <li className="flex items-center gap-2">
+              <MarkerSwatch kind="segment" /> Feasible region (on the equality line)
+            </li>
+          </>
+        )}
+        {layers.region && solution.region.shape !== "empty" && !inequalityArea && (
           <li className="flex items-center gap-2">
-            <MarkerSwatch kind="region" /> Feasible region
+            <MarkerSwatch kind={solution.region.shape === "segment" || solution.region.shape === "point" ? "segment" : "region"} />{" "}
+            Feasible region
           </li>
         )}
         {layers.intercepts && (
@@ -216,7 +233,7 @@ export function LPGraph({
       {!printMode && (
         <p className="px-4 pb-1 text-xs text-slate-500">Drag to pan, scroll or pinch to zoom, hover a point for details.</p>
       )}
-      <Legend solution={solution} layers={layers} />
+      <Legend solution={solution} layers={layers} view={view} />
     </div>
   );
 }

@@ -1,5 +1,7 @@
-import type { BoundaryEquation, LPPProblem, LPPSolution, Operator, Point } from "../types/lpp";
+import type { BoundaryEquation, CandidatePoint, LPPProblem, LPPSolution, Operator, Point } from "../types/lpp";
 import { dot, isZero, pointsEqual, tolerance } from "../utils/math";
+import { satisfies } from "./feasibility";
+import { orderCounterClockwise } from "./region";
 
 export interface Box {
   xMin: number;
@@ -150,9 +152,14 @@ export type RegionGeometry =
  * Strict "> 0" restrictions are drawn as their closure; excluded boundary points are
  * marked separately on the graph.
  */
-export function feasibleRegionGeometry(problem: LPPProblem, box: Box): RegionGeometry {
+export function feasibleRegionGeometry(
+  problem: LPPProblem,
+  box: Box,
+  options: { inequalitiesOnly?: boolean } = {},
+): RegionGeometry {
   let polygon = boxPolygon(box);
   for (const constraint of problem.constraints) {
+    if (options.inequalitiesOnly && constraint.operator === "=") continue;
     polygon = clipPolygon(polygon, constraint.x1, constraint.x2, constraint.operator, constraint.rhs);
     if (polygon.length === 0) return { kind: "none" };
   }
@@ -167,6 +174,28 @@ export function feasibleRegionGeometry(problem: LPPProblem, box: Box): RegionGeo
   if (unique.length >= 3 && polygonArea(unique) > boxArea * 1e-9) return { kind: "polygon", points: unique };
   const [p, q] = farthestPair(unique);
   return pointsEqual(p, q) ? { kind: "point", points: [p] } : { kind: "segment", points: [p, q] };
+}
+
+export function hasEqualityConstraint(problem: LPPProblem): boolean {
+  return problem.constraints.some((c) => c.operator === "=");
+}
+
+/**
+ * Corners of the region allowed by the inequality constraints alone (equalities ignored):
+ * candidate points that satisfy every ≤ / ≥ constraint and sign restriction, and lie on at
+ * least two inequality boundaries (or axes). Used to describe the shaded area when an
+ * equality constraint makes the true feasible region a segment or point inside it.
+ * Ordered counter-clockwise, like the region vertices.
+ */
+export function inequalityRegionCorners(solution: LPPSolution): CandidatePoint[] {
+  const equalityIds = new Set(solution.boundaryEquations.filter((l) => l.operator === "=").map((l) => l.id));
+  const corners = solution.intersections.filter(
+    (candidate) =>
+      candidate.checks.every((check) =>
+        check.operator === "=" ? true : satisfies(check.lhs, check.operator === ">" ? ">=" : check.operator, check.rhs),
+      ) && candidate.equationIds.filter((id) => !equalityIds.has(id)).length >= 2,
+  );
+  return orderCounterClockwise(corners);
 }
 
 /** The half-plane of a single inequality inside `box` (for optional per-constraint shading). */

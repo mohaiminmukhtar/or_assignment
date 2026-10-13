@@ -5,6 +5,7 @@ import {
   expandBox,
   feasibleRegionGeometry,
   halfPlanePolygon,
+  hasEqualityConstraint,
   lineLabelPosition,
   lineSegmentInBox,
 } from "../engine/graph";
@@ -28,7 +29,7 @@ export function layersForStep(step: number, halfPlanes: boolean): GraphLayers {
   return {
     intercepts: step === 2,
     region: step >= 3,
-    candidates: step >= 4,
+    candidates: step >= 3,
     feasibility: step >= 5,
     optimum: step >= 6,
     halfPlanes: halfPlanes && step >= 3,
@@ -42,6 +43,15 @@ const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 function closed(points: Point[]): { x: number[]; y: number[] } {
   const ring = [...points, points[0]!];
   return { x: ring.map((p) => p.x1), y: ring.map((p) => p.x2) };
+}
+
+/**
+ * True when the problem has an equality constraint and the inequalities alone enclose an
+ * area: that area is shaded and the feasible segment/point is highlighted on top of it.
+ */
+export function showsInequalityRegion(solution: LPPSolution, box: Box): boolean {
+  if (!hasEqualityConstraint(solution.problem) || solution.region.shape === "empty") return false;
+  return feasibleRegionGeometry(solution.problem, box, { inequalitiesOnly: true }).kind === "polygon";
 }
 
 type TextPosition = "top right" | "bottom right" | "top left" | "bottom left";
@@ -113,8 +123,24 @@ export function buildFigure(
     });
   }
 
-  // 2. The combined feasible region.
+  // 2. The combined feasible region. With an equality constraint the true region is only a
+  //    segment or point, so the area allowed by the inequalities is shaded first and the
+  //    feasible part of the equality line is drawn on top of it.
   if (layers.region) {
+    if (showsInequalityRegion(solution, drawBox)) {
+      const inequalityRegion = feasibleRegionGeometry(problem, drawBox, { inequalitiesOnly: true });
+      if (inequalityRegion.kind === "polygon") {
+        data.push({
+          type: "scatter",
+          mode: "lines",
+          ...closed(inequalityRegion.points),
+          fill: "toself",
+          fillcolor: REGION.fill,
+          line: { color: REGION.edge, width: 2.5 },
+          hoverinfo: "skip",
+        });
+      }
+    }
     const geometry = feasibleRegionGeometry(problem, drawBox);
     if (geometry.kind === "polygon") {
       data.push({
@@ -132,7 +158,7 @@ export function buildFigure(
         mode: "lines",
         x: geometry.points.map((p) => p.x1),
         y: geometry.points.map((p) => p.x2),
-        line: { color: REGION.segment, width: 16 },
+        line: { color: REGION.segment, width: 11 },
         hoverinfo: "skip",
       });
     } else if (geometry.kind === "point") {

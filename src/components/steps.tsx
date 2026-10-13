@@ -18,6 +18,7 @@ import { FinalAnswer, niceDirection } from "./FinalAnswer";
 import { MathExpression, MathLines } from "./MathExpression";
 import { Callout, Explain, LineChip, SubSection } from "./StepBlocks";
 import { lineColor } from "./graphStyle";
+import { inequalityRegionCorners } from "../engine/graph";
 import type { StepInfo } from "./StepNavigation";
 
 export const STEPS: StepInfo[] = [
@@ -61,15 +62,27 @@ export function RegionSummary({ solution }: { solution: LPPSolution }) {
           The constraints meet in a single point, <strong>{list}</strong>. The feasible region is just that point.
         </Callout>
       );
-    case "segment":
+    case "segment": {
+      const equalities = solution.boundaryEquations.filter((l) => l.operator === "=").map((l) => l.label);
+      const corners = inequalityRegionCorners(solution).map((c) => c.label);
       return (
-        <Callout>
-          The feasible region is a <strong>line segment</strong> (drawn as a thick band) with end points{" "}
-          <strong>{vertices.join(" and ")}</strong>.
-          {solution.problem.constraints.some((c) => c.operator === "=") &&
-            " This happens because an equality constraint only allows points that lie on its line."}
-        </Callout>
+        <div className="space-y-2">
+          {equalities.length > 0 && corners.length >= 3 && (
+            <Callout>
+              <strong>Shaded area {corners.join("")}</strong> (corners {corners.join(", ")}): the region that satisfies
+              every ≤ and ≥ constraint together with the sign restrictions.
+            </Callout>
+          )}
+          <Callout tone="success">
+            <strong>Feasible region: segment {vertices.join("")}</strong> (dark band), from {vertices.join(" to ")}.
+            {equalities.length > 0 &&
+              ` ${equalities.join(", ")} ${equalities.length > 1 ? "are equations" : "is an equation"}, so a feasible point must lie on ${
+                equalities.length > 1 ? "those lines" : "that line"
+              }. The feasible solutions are therefore the part of ${equalities.join(", ")} that passes through the shaded area.`}
+          </Callout>
+        </div>
       );
+    }
     case "polygon":
       return (
         <Callout>

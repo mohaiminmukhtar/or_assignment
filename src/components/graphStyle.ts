@@ -26,7 +26,8 @@ export const INK = {
 export const REGION = {
   fill: "rgba(37, 99, 235, 0.40)",
   edge: "rgba(29, 78, 216, 1)",
-  segment: "rgba(37, 99, 235, 0.65)",
+  /** Feasible segment or point; darker so it stands out on top of the shaded area. */
+  segment: "rgba(30, 58, 138, 0.85)",
 } as const;
 
 export const POINT = {

@@ -3,7 +3,7 @@ import type { LPPProblem, LPPSolution, Operator, Point, VariableRestriction } fr
 import { solveLPP } from "./solver";
 import { computeIntercept } from "./intercepts";
 import { buildBoundaryEquations, parseProblem } from "./parser";
-import { computeGraphBounds, feasibleRegionGeometry } from "./graph";
+import { computeGraphBounds, feasibleRegionGeometry, inequalityRegionCorners } from "./graph";
 import { exampleDraft } from "../data/examples";
 import { formatNumber, formatPoint } from "../utils/formatting";
 
@@ -98,6 +98,17 @@ describe("exact reference example", () => {
     expect(box.xMin).toBeLessThanOrEqual(0);
     const geometry = feasibleRegionGeometry(parsed.problem, box);
     expect(geometry.kind).toBe("segment");
+    // Ignoring the equality x1 + x2 = 4, the inequalities enclose a quadrilateral.
+    expect(feasibleRegionGeometry(parsed.problem, box, { inequalitiesOnly: true }).kind).toBe("polygon");
+  });
+
+  it("finds the corners of the area enclosed by the inequalities", () => {
+    expect(inequalityRegionCorners(solution).map((c) => formatPoint(c.point))).toEqual([
+      "(1/3, 3)",
+      "(8/7, 4/7)",
+      "(3, 1/5)",
+      "(3, 3)",
+    ]);
   });
 });
 
