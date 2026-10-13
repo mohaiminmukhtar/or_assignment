@@ -123,7 +123,7 @@ export function buildFigure(
         ...closed(geometry.points),
         fill: "toself",
         fillcolor: REGION.fill,
-        line: { color: REGION.edge, width: 1 },
+        line: { color: REGION.edge, width: 2.5 },
         hoverinfo: "skip",
       });
     } else if (geometry.kind === "segment") {
@@ -132,7 +132,7 @@ export function buildFigure(
         mode: "lines",
         x: geometry.points.map((p) => p.x1),
         y: geometry.points.map((p) => p.x2),
-        line: { color: REGION.segment, width: 10 },
+        line: { color: REGION.segment, width: 16 },
         hoverinfo: "skip",
       });
     } else if (geometry.kind === "point") {
@@ -141,7 +141,7 @@ export function buildFigure(
         mode: "markers",
         x: [geometry.points[0].x1],
         y: [geometry.points[0].x2],
-        marker: { size: 26, color: REGION.segment },
+        marker: { size: 30, color: REGION.segment },
         hoverinfo: "skip",
       });
     }

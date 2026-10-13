@@ -24,9 +24,9 @@ export const INK = {
 } as const;
 
 export const REGION = {
-  fill: "rgba(37, 99, 235, 0.16)",
-  edge: "rgba(29, 78, 216, 0.55)",
-  segment: "rgba(37, 99, 235, 0.35)",
+  fill: "rgba(37, 99, 235, 0.40)",
+  edge: "rgba(29, 78, 216, 1)",
+  segment: "rgba(37, 99, 235, 0.65)",
 } as const;
 
 export const POINT = {
